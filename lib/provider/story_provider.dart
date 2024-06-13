@@ -5,13 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:story/constants/url_api.dart';
+import 'package:story/model/story.dart';
 import 'package:flutter/foundation.dart';
 
 class StoryProvider with ChangeNotifier {
-  List<dynamic> _stories = [];
+  List<Story> _stories = [];
   bool _isLoading = false;
 
-  List<dynamic> get stories => _stories;
+  List<Story> get stories => _stories;
   bool get isLoading => _isLoading;
 
   Future<void> fetchStories() async {
@@ -33,10 +34,8 @@ class StoryProvider with ChangeNotifier {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        _stories = List<dynamic>.from(data['listStory'].map((x) => {
-              ...x,
-              'createdAt': DateTime.parse(x['createdAt']),
-            }));
+        _stories =
+            List<Story>.from(data['listStory'].map((x) => Story.fromJson(x)));
       } else {
         throw Exception('Failed to load stories');
       }

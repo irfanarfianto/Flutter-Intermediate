@@ -54,7 +54,6 @@ class AuthProvider with ChangeNotifier {
         throw Exception('Failed to register: ${response.statusCode}');
       }
     } catch (e) {
-      print('Failed to register due to exception: $e');
       return false; // Registration failed due to exception
     }
   }

@@ -1,3 +1,5 @@
+// ignore_for_file: library_private_types_in_public_api, empty_catches, use_build_context_synchronously
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -18,6 +20,9 @@ class _AddStoryPageState extends State<AddStoryPage> {
   File? _image;
   bool _isLoading = false;
   late StoryAppRouterDelegate _routerDelegate;
+
+  double? _lat;
+  double? _lon;
 
   @override
   void initState() {
@@ -68,10 +73,6 @@ class _AddStoryPageState extends State<AddStoryPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Story uploaded successfully!')),
         );
-
-        // Memanggil fetchStories untuk memperbarui daftar cerita
-        await provider.fetchStories();
-
         _routerDelegate.navigateToStoryList(); // Navigate to story list
       } else if (result == 401) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -151,6 +152,9 @@ class _AddStoryPageState extends State<AddStoryPage> {
                   floatingLabelBehavior: FloatingLabelBehavior.always,
                 ),
               ),
+              const SizedBox(height: 10),
+              if (_lat != null && _lon != null)
+                Text('Current Location: ($_lat, $_lon)'),
               const SizedBox(height: 10),
             ],
           ),

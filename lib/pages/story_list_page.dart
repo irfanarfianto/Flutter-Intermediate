@@ -1,3 +1,5 @@
+// ignore_for_file: library_private_types_in_public_api
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:story/provider/auth_provider.dart';
@@ -83,7 +85,6 @@ class _StoryListPageState extends State<StoryListPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Obtain the router delegate from the nearest Router widget
     _routerDelegate =
         Router.of(context).routerDelegate as StoryAppRouterDelegate;
 
@@ -107,7 +108,7 @@ class _StoryListPageState extends State<StoryListPage> {
           builder: (context, storyProvider, child) {
             if (storyProvider.isLoading) {
               return ListView.builder(
-                itemCount: 5, // Placeholder count can be adjusted
+                itemCount: 5,
                 itemBuilder: (context, index) => _buildStoryPlaceholder(),
               );
             } else if (storyProvider.stories.isEmpty) {
@@ -135,7 +136,7 @@ class _StoryListPageState extends State<StoryListPage> {
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(10.0),
                                 child: Image.network(
-                                  story['photoUrl'],
+                                  story.photoUrl,
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) {
                                     return const Icon(Icons.error);
@@ -155,7 +156,7 @@ class _StoryListPageState extends State<StoryListPage> {
                             ),
                             const SizedBox(height: 10),
                             Text(
-                              story['name'],
+                              story.name,
                               style: const TextStyle(
                                 fontSize: 16.0,
                                 fontWeight: FontWeight.bold,
@@ -163,7 +164,7 @@ class _StoryListPageState extends State<StoryListPage> {
                             ),
                             const SizedBox(height: 5),
                             Text(
-                              story['description'],
+                              story.description,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(fontSize: 14.0),

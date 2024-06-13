@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:story/model/story.dart';
 import 'package:story/pages/add_story_page.dart';
 import 'package:story/pages/login_page.dart';
 import 'package:story/pages/register_page.dart';
+import 'package:story/pages/story_detail_page.dart';
 import 'package:story/pages/story_list_page.dart';
 import 'package:story/provider/auth_provider.dart';
 
@@ -12,7 +14,6 @@ class StoryAppRouterDelegate extends RouterDelegate<RouteSettings>
   final GlobalKey<NavigatorState> navigatorKey;
 
   StoryAppRouterDelegate() : navigatorKey = GlobalKey<NavigatorState>() {
-    // Initialize selectedRoute to a default route
     selectedRoute = const RouteSettings(name: '/login');
   }
 
@@ -41,16 +42,10 @@ class StoryAppRouterDelegate extends RouterDelegate<RouteSettings>
     notifyListeners();
   }
 
-  void navigateToStoryDetail(Map<String, dynamic> story) {
+  void navigateToStoryDetail(Story story) {
     selectedRoute = RouteSettings(
       name: '/storydetail',
-      arguments: {
-        'id': story['id'],
-        'photoUrl': story['photoUrl'],
-        'name': story['name'],
-        'description': story['description'],
-        'creationTime': story['createdAt'],
-      },
+      arguments: story.toJson(),
     );
     notifyListeners();
   }
@@ -79,6 +74,16 @@ class StoryAppRouterDelegate extends RouterDelegate<RouteSettings>
             key: ValueKey('StoryListPage'),
             child: StoryListPage(),
           ),
+        if (selectedRoute!.name == '/storydetail')
+          if (selectedRoute!.arguments is Map<String, dynamic>) ...[
+            MaterialPage(
+              key: const ValueKey('StoryDetailPage'),
+              child: StoryDetailPage(
+                story: Story.fromJson(
+                    selectedRoute!.arguments as Map<String, dynamic>),
+              ),
+            ),
+          ],
         if (selectedRoute!.name == '/addstory')
           const MaterialPage(
             key: ValueKey('AddStoryPage'),
@@ -96,6 +101,8 @@ class StoryAppRouterDelegate extends RouterDelegate<RouteSettings>
     final authProvider =
         Provider.of<AuthProvider>(navigatorKey.currentContext!, listen: false);
 
+    await authProvider.checkSession();
+
     if (authProvider.token != null) {
       selectedRoute = const RouteSettings(name: '/storylist');
     } else {
@@ -109,6 +116,8 @@ class StoryAppRouterDelegate extends RouterDelegate<RouteSettings>
   Future<void> setNewRoutePath(RouteSettings configuration) async {
     final authProvider =
         Provider.of<AuthProvider>(navigatorKey.currentContext!, listen: false);
+
+    await authProvider.checkSession();
 
     if (authProvider.token != null) {
       selectedRoute = const RouteSettings(name: '/storylist');
