@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:story/routes/router_delegate.dart';
 
 class StoryDetailPage extends StatelessWidget {
   final String id;
@@ -22,9 +23,18 @@ class StoryDetailPage extends StatelessWidget {
     String formattedCreationTime =
         DateFormat.yMMMMd().add_jm().format(creationTime);
 
+    final routerDelegate =
+        Router.of(context).routerDelegate as StoryAppRouterDelegate;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Story Detail'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            routerDelegate.navigateToStoryList();
+          },
+        ),
       ),
       body: SingleChildScrollView(
         child: Padding(

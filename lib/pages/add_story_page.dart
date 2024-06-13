@@ -1,14 +1,10 @@
-// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously
-
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
-import 'dart:io';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import 'package:story/constants/button.dart';
-import 'package:story/constants/loading_indicator.dart';
-import 'package:story/constants/url_api.dart';
-import 'package:story/pages/story_list_page.dart';
+import 'package:story/provider/story_provider.dart';
+import 'package:story/routes/router_delegate.dart';
 
 class AddStoryPage extends StatefulWidget {
   const AddStoryPage({super.key});
@@ -20,34 +16,28 @@ class AddStoryPage extends StatefulWidget {
 class _AddStoryPageState extends State<AddStoryPage> {
   final _descriptionController = TextEditingController();
   File? _image;
-  String? _authToken;
   bool _isLoading = false;
+  late StoryAppRouterDelegate _routerDelegate;
 
   @override
   void initState() {
     super.initState();
-    _loadToken();
-  }
-
-  Future<void> _loadToken() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _authToken = prefs.getString('token');
-    });
+    _routerDelegate =
+        Router.of(context).routerDelegate as StoryAppRouterDelegate;
   }
 
   Future<void> _pickImage(ImageSource source) async {
     try {
       final pickedFile = await ImagePicker().pickImage(source: source);
-      setState(() {
-        if (pickedFile != null) {
+      if (pickedFile != null) {
+        setState(() {
           _image = File(pickedFile.path);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No image selected.')),
-          );
-        }
-      });
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No image selected.')),
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to pick image: $e')),
@@ -56,49 +46,41 @@ class _AddStoryPageState extends State<AddStoryPage> {
   }
 
   Future<void> _uploadStory() async {
-    if (_image == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select an image first.')),
-      );
-      return;
-    }
-
-    if (_authToken == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content:
-                Text('Authentication token is missing. Please log in again.')),
-      );
-      return;
-    }
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
-      final request =
-          http.MultipartRequest('POST', Uri.parse('${UrlApi.baseUrl}/stories'));
-      request.fields['description'] = _descriptionController.text;
-      request.files
-          .add(await http.MultipartFile.fromPath('photo', _image!.path));
-      request.headers['Authorization'] = 'Bearer $_authToken';
+      final description = _descriptionController.text;
+      final image = _image;
 
-      final response = await request.send();
+      if (image == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select an image first.')),
+        );
+        return;
+      }
 
-      if (response.statusCode == 201) {
+      final provider = Provider.of<StoryProvider>(context, listen: false);
+      final result = await provider.addStory(description, image);
+
+      if (result == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Story uploaded successfully!')),
         );
-        // navigasi ke halaman list story
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const StoryListPage()),
-        );
-      } else if (response.statusCode == 401) {
+
+        // Memanggil fetchStories untuk memperbarui daftar cerita
+        await provider.fetchStories();
+
+        _routerDelegate.navigateToStoryList(); // Navigate to story list
+      } else if (result == 401) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Unauthorized. Please log in again.')),
         );
         // Handle token refresh or re-authentication logic here
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Failed to upload story: ${response.statusCode}')),
+          SnackBar(content: Text('Failed to upload story: $result')),
         );
       }
     } catch (e) {
@@ -120,69 +102,70 @@ class _AddStoryPageState extends State<AddStoryPage> {
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            const SizedBox(height: 10),
-            _image == null
-                ? Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    width: double.infinity,
-                    height: 200,
-                    alignment: Alignment.center,
-                    child: const Text('No image selected.'))
-                : SizedBox(width: 200, height: 200, child: Image.file(_image!)),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  onPressed: () => _pickImage(ImageSource.camera),
-                  style: primaryButtonStyle,
-                  child: const Text('Camera'),
-                ),
-                ElevatedButton(
-                  onPressed: () => _pickImage(ImageSource.gallery),
-                  style: primaryButtonStyle,
-                  child: const Text('Gallery'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _descriptionController,
-              maxLines: 5,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'Description',
-                hintStyle: TextStyle(
-                  color: Colors.grey,
-                ),
-                floatingLabelBehavior: FloatingLabelBehavior.always,
+      resizeToAvoidBottomInset: true,
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 10),
+              _image == null
+                  ? Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      width: double.infinity,
+                      height: 200,
+                      alignment: Alignment.center,
+                      child: const Text('No image selected.'))
+                  : SizedBox(
+                      width: 200, height: 200, child: Image.file(_image!)),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    onPressed: () => _pickImage(ImageSource.camera),
+                    style: primaryButtonStyle,
+                    child: const Text('Camera'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => _pickImage(ImageSource.gallery),
+                    style: primaryButtonStyle,
+                    child: const Text('Gallery'),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _isLoading = true;
-                });
-                _uploadStory().then((_) {
-                  setState(() {
-                    _isLoading = false;
-                  });
-                });
-              },
-              style: primaryButtonStyle,
-              child: _isLoading
-                  ? const LoadingIndicator()
-                  : const Text('Upload Story'),
-            ),
-          ],
+              const SizedBox(height: 10),
+              TextField(
+                controller: _descriptionController,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'Description',
+                  hintStyle: TextStyle(
+                    color: Colors.grey,
+                  ),
+                  floatingLabelBehavior: FloatingLabelBehavior.always,
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: BottomAppBar(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: ElevatedButton(
+            onPressed: _isLoading ? null : _uploadStory,
+            style: primaryButtonStyle,
+            child: _isLoading
+                ? const CircularProgressIndicator(color: Colors.white)
+                : const Text('Upload Story'),
+          ),
         ),
       ),
     );

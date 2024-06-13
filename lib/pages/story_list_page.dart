@@ -1,13 +1,8 @@
-// ignore_for_file: library_private_types_in_public_api
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:story/constants/url_api.dart';
-import 'package:story/pages/add_story_page.dart';
-import 'package:story/pages/login_page.dart';
-import 'package:story/pages/story_detail_page.dart';
+import 'package:provider/provider.dart';
+import 'package:story/provider/auth_provider.dart';
+import 'package:story/provider/story_provider.dart';
+import 'package:story/routes/router_delegate.dart';
 
 class StoryListPage extends StatefulWidget {
   const StoryListPage({super.key});
@@ -17,43 +12,24 @@ class StoryListPage extends StatefulWidget {
 }
 
 class _StoryListPageState extends State<StoryListPage> {
-  Future<String?> _getToken() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getString('token');
+  late StoryAppRouterDelegate _routerDelegate;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<StoryProvider>(context, listen: false).fetchStories();
+    });
   }
 
-  Future<List<dynamic>> _fetchStories() async {
-    final token = await _getToken();
-    if (token == null) {
-      throw Exception('Authentication token is missing');
-    }
-
-    final response = await http.get(
-      Uri.parse('${UrlApi.baseUrl}/stories'),
-      headers: <String, String>{
-        'Authorization': 'Bearer $token',
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      // Convert createdAt to DateTime
-      List<dynamic> stories = List<dynamic>.from(data['listStory']
-          .map((x) => {...x, 'createdAt': DateTime.parse(x['createdAt'])}));
-      return stories;
-    } else {
-      throw Exception('Failed to load stories');
-    }
+  Future<void> _refreshStories(BuildContext context) async {
+    await Provider.of<StoryProvider>(context, listen: false).fetchStories();
   }
 
-  Future<void> _refreshStories() async {
-    setState(() {});
-  }
-
-  Future<void> _showLogoutDialog() async {
+  Future<void> _showLogoutDialog(BuildContext context) async {
     return showDialog<void>(
       context: context,
-      barrierDismissible: false, // user must tap button!
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Keluar dari aplikasi?'),
@@ -61,11 +37,9 @@ class _StoryListPageState extends State<StoryListPage> {
             TextButton(
               child: const Text('Keluar'),
               onPressed: () async {
-                SharedPreferences prefs = await SharedPreferences.getInstance();
-                await prefs.remove('token');
-                // ignore: use_build_context_synchronously
-                Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (context) => const LoginPage()));
+                await Provider.of<AuthProvider>(context, listen: false)
+                    .logout();
+                _routerDelegate.navigateToLogin();
               },
             ),
             TextButton(
@@ -78,10 +52,6 @@ class _StoryListPageState extends State<StoryListPage> {
         );
       },
     );
-  }
-
-  Future<void> _logout() async {
-    await _showLogoutDialog();
   }
 
   Widget _buildStoryPlaceholder() {
@@ -113,55 +83,46 @@ class _StoryListPageState extends State<StoryListPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Obtain the router delegate from the nearest Router widget
+    _routerDelegate =
+        Router.of(context).routerDelegate as StoryAppRouterDelegate;
+
     return ScrollConfiguration(
       behavior: const ScrollBehavior().copyWith(overscroll: false),
       child: Scaffold(
         appBar: AppBar(
-          title: const Text(
-            'Story App',
-          ),
+          title: const Text('Story App'),
           actions: [
             IconButton(
               icon: const Icon(Icons.logout, semanticLabel: 'Logout'),
               tooltip: 'Logout',
-              onPressed: _logout,
+              onPressed: () => _showLogoutDialog(context),
             ),
           ],
           backgroundColor: Colors.blue,
           foregroundColor: Colors.white,
           automaticallyImplyLeading: false,
         ),
-        body: FutureBuilder<List<dynamic>>(
-          future: _fetchStories(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
+        body: Consumer<StoryProvider>(
+          builder: (context, storyProvider, child) {
+            if (storyProvider.isLoading) {
               return ListView.builder(
-                itemCount: 5,
+                itemCount: 5, // Placeholder count can be adjusted
                 itemBuilder: (context, index) => _buildStoryPlaceholder(),
               );
-            } else if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
+            } else if (storyProvider.stories.isEmpty) {
+              return const Center(child: Text('No stories available.'));
             } else {
-              final stories = snapshot.data!;
+              final stories = storyProvider.stories;
               return RefreshIndicator(
-                onRefresh: _refreshStories,
+                onRefresh: () => _refreshStories(context),
                 child: ListView.builder(
                   itemCount: stories.length,
                   itemBuilder: (context, index) {
                     final story = stories[index];
                     return InkWell(
                       onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => StoryDetailPage(
-                              id: story['id'],
-                              photoUrl: story['photoUrl'],
-                              name: story['name'],
-                              description: story['description'],
-                              creationTime: story['createdAt'],
-                            ),
-                          ),
-                        );
+                        _routerDelegate.navigateToStoryDetail(story);
                       },
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
@@ -220,14 +181,9 @@ class _StoryListPageState extends State<StoryListPage> {
         floatingActionButton: FloatingActionButton(
           backgroundColor: Colors.blue,
           onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const AddStoryPage(),
-              ),
-            );
+            _routerDelegate.navigateToAddStory();
           },
-          child: const Icon(Icons.add,
-              color: Colors.white, semanticLabel: 'Add Story'),
+          child: const Icon(Icons.add, color: Colors.white),
         ),
       ),
     );

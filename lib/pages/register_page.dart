@@ -1,18 +1,14 @@
-// ignore_for_file: use_build_context_synchronously
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:provider/provider.dart';
 import 'package:story/constants/button.dart';
 import 'package:story/constants/loading_indicator.dart';
-import 'package:story/constants/url_api.dart';
-import 'package:story/pages/login_page.dart';
+import 'package:story/provider/auth_provider.dart';
+import 'package:story/routes/router_delegate.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _RegisterPageState createState() => _RegisterPageState();
 }
 
@@ -23,67 +19,51 @@ class _RegisterPageState extends State<RegisterPage> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
+  String _errorMessage = '';
+
+  late StoryAppRouterDelegate _routerDelegate;
+
+  @override
+  void initState() {
+    super.initState();
+    _routerDelegate =
+        Provider.of<StoryAppRouterDelegate>(context, listen: false);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   Future<void> _register() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
+        _errorMessage = '';
       });
 
-      final response = await http.post(
-        Uri.parse('${UrlApi.baseUrl}/register'),
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode(<String, String>{
-          'name': _nameController.text,
-          'email': _emailController.text,
-          'password': _passwordController.text,
-        }),
-      );
+      final success = await Provider.of<AuthProvider>(context, listen: false)
+          .register(_nameController.text, _emailController.text,
+              _passwordController.text);
 
       setState(() {
         _isLoading = false;
       });
 
-      if (response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        if (!data['error']) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Registration successful. Please log in.'),
-            ),
-          );
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const LoginPage()),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(data['message']),
-            ),
-          );
-        }
-      } else if (response.statusCode == 400) {
-        final data = jsonDecode(response.body);
-        String errorMessage =
-            data['message'] ?? 'Registration failed. Please try again.';
-        if (data['error'] == true &&
-            data['message'].contains('already registered')) {
-          errorMessage =
-              'Email is already registered. Please use a different email.';
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-          ),
-        );
-      } else {
+      if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Failed to register. Please try again later.'),
+            content: Text('Registration successful. Please log in.'),
           ),
         );
+        _routerDelegate.navigateToLogin();
+      } else {
+        setState(() {
+          _errorMessage = 'Registration failed. Email already in use.';
+        });
       }
     }
   }
@@ -121,9 +101,17 @@ class _RegisterPageState extends State<RegisterPage> {
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Email',
-                      border: OutlineInputBorder(),
+                      border: const OutlineInputBorder(),
+                      errorBorder: const OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.red),
+                      ),
+                      focusedErrorBorder: const OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.red),
+                      ),
+                      errorText:
+                          _errorMessage.isNotEmpty ? _errorMessage : null,
                     ),
                     validator: (value) {
                       if (value!.isEmpty) {
@@ -166,6 +154,13 @@ class _RegisterPageState extends State<RegisterPage> {
                     child: _isLoading
                         ? const LoadingIndicator()
                         : const Text('Register'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextButton(
+                    onPressed: () {
+                      _routerDelegate.navigateToLogin();
+                    },
+                    child: const Text('Sudah memiliki akun? Masuk disini'),
                   ),
                 ],
               ),

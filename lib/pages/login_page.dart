@@ -1,14 +1,12 @@
-// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously
-
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:story/constants/button.dart';
 import 'package:story/constants/loading_indicator.dart';
 import 'package:story/constants/url_api.dart';
-import 'package:story/pages/register_page.dart';
-import 'package:story/pages/story_list_page.dart';
+import 'package:story/provider/auth_provider.dart';
+import 'package:story/routes/router_delegate.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -23,11 +21,28 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
+  String _errorMessage = '';
+  late StoryAppRouterDelegate _routerDelegate;
+
+  @override
+  void initState() {
+    super.initState();
+    _routerDelegate =
+        Provider.of<StoryAppRouterDelegate>(context, listen: false);
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
+        _errorMessage = '';
       });
 
       final response = await http.post(
@@ -47,26 +62,21 @@ class _LoginPageState extends State<LoginPage> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', data['loginResult']['token']);
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const StoryListPage()),
-        );
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Provider.of<AuthProvider>(context, listen: false)
+              .login(data['loginResult']['token']);
+          _routerDelegate.navigateToStoryList();
+        });
       } else if (response.statusCode == 401) {
-        _showErrorSnackbar('Invalid email or password. Please try again.');
+        setState(() {
+          _errorMessage = 'Invalid email or password. Please try again.';
+        });
       } else {
-        _showErrorSnackbar('Login failed. Please try again later.');
+        setState(() {
+          _errorMessage = 'Login failed. Please try again later.';
+        });
       }
     }
-  }
-
-  void _showErrorSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 3),
-      ),
-    );
   }
 
   @override
@@ -82,6 +92,30 @@ class _LoginPageState extends State<LoginPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (_errorMessage.isNotEmpty) ...[
+                    Container(
+                      padding: const EdgeInsets.all(8.0),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.all(Radius.circular(5)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.error,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _errorMessage,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 35),
                   Image.asset(
                     'assets/logo/logo.png',
                     height: 50,
@@ -93,6 +127,12 @@ class _LoginPageState extends State<LoginPage> {
                     decoration: const InputDecoration(
                       labelText: 'Email',
                       border: OutlineInputBorder(),
+                      errorBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.red),
+                      ),
+                      focusedErrorBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.red),
+                      ),
                     ),
                     validator: (value) {
                       if (value!.isEmpty) {
@@ -119,6 +159,12 @@ class _LoginPageState extends State<LoginPage> {
                           });
                         },
                       ),
+                      errorBorder: const OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.red),
+                      ),
+                      focusedErrorBorder: const OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.red),
+                      ),
                     ),
                     obscureText: _obscurePassword,
                     validator: (value) {
@@ -139,11 +185,7 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 10),
                   TextButton(
                     onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const RegisterPage(),
-                        ),
-                      );
+                      _routerDelegate.navigateToRegister();
                     },
                     child: const Text('Register'),
                   ),
