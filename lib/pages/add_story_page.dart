@@ -6,10 +6,11 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:story/constants/button.dart';
 import 'package:story/provider/story_provider.dart';
-import 'package:story/routes/router_delegate.dart';
 
 class AddStoryPage extends StatefulWidget {
-  const AddStoryPage({super.key});
+  final Function onStoryAdded;
+
+  const AddStoryPage({super.key, required this.onStoryAdded});
 
   @override
   _AddStoryPageState createState() => _AddStoryPageState();
@@ -19,17 +20,9 @@ class _AddStoryPageState extends State<AddStoryPage> {
   final _descriptionController = TextEditingController();
   File? _image;
   bool _isLoading = false;
-  late StoryAppRouterDelegate _routerDelegate;
 
   double? _lat;
   double? _lon;
-
-  @override
-  void initState() {
-    super.initState();
-    _routerDelegate =
-        Router.of(context).routerDelegate as StoryAppRouterDelegate;
-  }
 
   Future<void> _pickImage(ImageSource source) async {
     try {
@@ -73,7 +66,7 @@ class _AddStoryPageState extends State<AddStoryPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Story uploaded successfully!')),
         );
-        _routerDelegate.navigateToStoryList(); // Navigate to story list
+        widget.onStoryAdded();
       } else if (result == 401) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Unauthorized. Please log in again.')),
@@ -99,6 +92,7 @@ class _AddStoryPageState extends State<AddStoryPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        
         title: const Text('Add Story'),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,

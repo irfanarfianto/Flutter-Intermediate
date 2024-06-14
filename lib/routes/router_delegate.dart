@@ -1,130 +1,266 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:story/model/story.dart';
 import 'package:story/pages/add_story_page.dart';
 import 'package:story/pages/login_page.dart';
 import 'package:story/pages/register_page.dart';
+import 'package:story/pages/splash_screen.dart';
 import 'package:story/pages/story_detail_page.dart';
 import 'package:story/pages/story_list_page.dart';
-import 'package:story/provider/auth_provider.dart';
+import 'package:story/pages/u.dart';
+import 'package:story/routes/page_configuration.dart';
 
-class StoryAppRouterDelegate extends RouterDelegate<RouteSettings>
-    with ChangeNotifier, PopNavigatorRouterDelegateMixin<RouteSettings> {
+class MyRouterDelegate extends RouterDelegate<PageConfiguration>
+    with ChangeNotifier, PopNavigatorRouterDelegateMixin {
+  final GlobalKey<NavigatorState> _navigatorKey;
+
+  bool? isLoggedIn;
+  bool isUnknown = false;
+  bool isRegister = false;
+  String? selectedStoryId;
+  bool isAddStory = false;
+
+  MyRouterDelegate() : _navigatorKey = GlobalKey<NavigatorState>() {
+    _init();
+  }
+
+  Future<void> _init() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    isLoggedIn = prefs.getString('token') != null;
+    notifyListeners();
+  }
+
   @override
-  final GlobalKey<NavigatorState> navigatorKey;
-
-  StoryAppRouterDelegate() : navigatorKey = GlobalKey<NavigatorState>() {
-    selectedRoute = const RouteSettings(name: '/login');
-  }
-
-  RouteSettings? selectedRoute;
+  GlobalKey<NavigatorState> get navigatorKey => _navigatorKey;
 
   @override
-  RouteSettings? get currentConfiguration => selectedRoute;
-
-  void navigateToLogin() {
-    selectedRoute = const RouteSettings(name: '/login');
-    notifyListeners();
+  PageConfiguration? get currentConfiguration {
+    if (isLoggedIn == null) {
+      return PageConfiguration.splash();
+    } else if (isRegister) {
+      return PageConfiguration.register();
+    } else if (isLoggedIn == false) {
+      return PageConfiguration.login();
+    } else if (isUnknown) {
+      return PageConfiguration.unknown();
+    } else if (selectedStoryId == null && !isAddStory) {
+      return PageConfiguration.home();
+    } else if (selectedStoryId != null) {
+      return PageConfiguration.detailStory(selectedStoryId!);
+    } else if (isAddStory) {
+      return PageConfiguration.addStory();
+    } else {
+      return null;
+    }
   }
 
-  void navigateToRegister() {
-    selectedRoute = const RouteSettings(name: '/register');
-    notifyListeners();
-  }
+  @override
+  Future<void> setNewRoutePath(PageConfiguration configuration) async {
+    if (configuration.isUnknownPage) {
+      isUnknown = true;
+      isRegister = false;
+      selectedStoryId = null;
+      isAddStory = false;
+    } else if (configuration.isRegisterPage) {
+      isRegister = true;
+      selectedStoryId = null;
+      isAddStory = false;
+    } else if (configuration.isLoginPage || configuration.isSplashPage) {
+      isUnknown = false;
+      isRegister = false;
+      selectedStoryId = null;
+      isAddStory = false;
+    } else if (configuration.isHomePage) {
+      isUnknown = false;
+      isRegister = false;
+      selectedStoryId = null;
+      isAddStory = false;
+    } else if (configuration.isDetailStoryPage &&
+        configuration.storyId != null) {
+      isUnknown = false;
+      isRegister = false;
+      selectedStoryId = configuration.storyId;
+      isAddStory = false;
+    } else if (configuration.isAddStoryPage) {
+      isUnknown = false;
+      isRegister = false;
+      selectedStoryId = null;
+      isAddStory = true;
+    }
 
-  void navigateToStoryList() {
-    selectedRoute = const RouteSettings(name: '/storylist');
-    notifyListeners();
-  }
-
-  void navigateToAddStory() {
-    selectedRoute = const RouteSettings(name: '/addstory');
-    notifyListeners();
-  }
-
-  void navigateToStoryDetail(Story story) {
-    selectedRoute = RouteSettings(
-      name: '/storydetail',
-      arguments: story.toJson(),
-    );
     notifyListeners();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (selectedRoute == null) {
-      return Container();
+    List<Page> historyStack = [];
+
+    if (isUnknown) {
+      historyStack = _unknownStack;
+    } else if (isLoggedIn == null) {
+      historyStack = _splashStack;
+    } else if (isLoggedIn == false) {
+      historyStack = _loggedOutStack;
+    } else if (isLoggedIn == true && selectedStoryId == null && !isAddStory) {
+      historyStack = _loggedInStack;
+    } else if (isLoggedIn == true && selectedStoryId != null) {
+      historyStack = _storyDetailStack(selectedStoryId!);
+    } else if (isAddStory) {
+      historyStack = _addStoryStack();
     }
 
     return Navigator(
       key: navigatorKey,
-      pages: [
-        if (selectedRoute!.name == '/login')
-          const MaterialPage(
-            key: ValueKey('LoginPage'),
-            child: LoginPage(),
-          ),
-        if (selectedRoute!.name == '/register')
-          const MaterialPage(
-            key: ValueKey('RegisterPage'),
-            child: RegisterPage(),
-          ),
-        if (selectedRoute!.name == '/storylist')
-          const MaterialPage(
-            key: ValueKey('StoryListPage'),
-            child: StoryListPage(),
-          ),
-        if (selectedRoute!.name == '/storydetail')
-          if (selectedRoute!.arguments is Map<String, dynamic>) ...[
-            MaterialPage(
-              key: const ValueKey('StoryDetailPage'),
-              child: StoryDetailPage(
-                story: Story.fromJson(
-                    selectedRoute!.arguments as Map<String, dynamic>),
-              ),
-            ),
-          ],
-        if (selectedRoute!.name == '/addstory')
-          const MaterialPage(
-            key: ValueKey('AddStoryPage'),
-            child: AddStoryPage(),
-          ),
-      ],
+      pages: historyStack,
       onPopPage: (route, result) {
-        return route.didPop(result);
+        final didPop = route.didPop(result);
+        if (!didPop) {
+          return false;
+        }
+
+        // Reset states upon pop
+        if (isRegister) {
+          isRegister = false;
+        }
+        selectedStoryId = null;
+        isAddStory = false;
+
+        notifyListeners();
+
+        return true;
       },
     );
   }
 
-  @override
-  Future<void> setInitialRoutePath(RouteSettings configuration) async {
-    final authProvider =
-        Provider.of<AuthProvider>(navigatorKey.currentContext!, listen: false);
-
-    await authProvider.checkSession();
-
-    if (authProvider.token != null) {
-      selectedRoute = const RouteSettings(name: '/storylist');
-    } else {
-      selectedRoute = const RouteSettings(name: '/login');
-    }
-
-    notifyListeners();
+  List<Page> get _unknownStack {
+    return [
+      const MaterialPage(
+        key: ValueKey('UnknownPage'),
+        child: UnknownScreen(),
+      ),
+    ];
   }
 
-  @override
-  Future<void> setNewRoutePath(RouteSettings configuration) async {
-    final authProvider =
-        Provider.of<AuthProvider>(navigatorKey.currentContext!, listen: false);
+  List<Page> get _splashStack {
+    return [
+      const MaterialPage(
+        key: ValueKey('SplashScreen'),
+        child: SplashScreen(),
+      ),
+    ];
+  }
 
-    await authProvider.checkSession();
+  List<Page> get _loggedOutStack {
+    List<Page> stack = [
+      MaterialPage(
+        key: const ValueKey("LoginPage"),
+        child: LoginPage(
+          onLogin: () {
+            isLoggedIn = true;
+            notifyListeners();
+          },
+          onRegister: () {
+            isRegister = true;
+            notifyListeners();
+          },
+        ),
+      ),
+    ];
 
-    if (authProvider.token != null) {
-      selectedRoute = const RouteSettings(name: '/storylist');
-    } else {
-      selectedRoute = const RouteSettings(name: '/login');
+    if (isRegister == true) {
+      stack.add(MaterialPage(
+        key: const ValueKey("RegisterPage"),
+        child: RegisterPage(
+          onRegister: () {
+            isRegister = false;
+            notifyListeners();
+          },
+          onLogin: () {
+            isRegister = false;
+            notifyListeners();
+          },
+        ),
+      ));
     }
 
-    notifyListeners();
+    return stack;
+  }
+
+  List<Page> get _loggedInStack {
+    List<Page> stack = [];
+
+    if (isLoggedIn == true) {
+      stack.add(
+        MaterialPage(
+          key: const ValueKey('StoryListPage'),
+          child: StoryListPage(
+            onLogout: () async {
+              SharedPreferences prefs = await SharedPreferences.getInstance();
+              await prefs.remove('token');
+              isLoggedIn = false;
+              notifyListeners();
+            },
+            onStorySelected: (Story story) {
+              selectedStoryId =
+                  jsonEncode(story.toJson()); // Convert Story to JSON string
+              notifyListeners();
+            },
+            onAddStory: () {
+              isAddStory = true;
+              notifyListeners();
+            },
+          ),
+        ),
+      );
+
+      // Add the detail story page to the stack if selectedStoryId is valid
+      if (selectedStoryId != null && _isValidJson(selectedStoryId!)) {
+        stack.addAll(_storyDetailStack(selectedStoryId!));
+      }
+    }
+
+    return stack;
+  }
+
+  List<Page> _storyDetailStack(String storyId) {
+    Story selectedStory = Story.fromJson(jsonDecode(storyId));
+
+    return [
+      MaterialPage(
+        key: ValueKey('StoryDetailPage-${selectedStory.id}'),
+        child: StoryDetailPage(
+          story: selectedStory,
+          onBack: () {
+            selectedStoryId = null;
+            notifyListeners(); // Update UI after popping detail page
+          },
+        ),
+      ),
+    ];
+  }
+
+  List<Page> _addStoryStack() {
+    return [
+      MaterialPage(
+        key: const ValueKey('AddStoryPage'),
+        child: AddStoryPage(
+          onStoryAdded: () {
+            isAddStory = false;
+            notifyListeners(); // Update UI after adding story
+          },
+        ),
+      ),
+    ];
+  }
+
+  bool _isValidJson(String jsonString) {
+    try {
+      jsonDecode(jsonString);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 }

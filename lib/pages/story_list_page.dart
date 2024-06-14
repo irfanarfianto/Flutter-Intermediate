@@ -2,20 +2,26 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:story/model/story.dart';
 import 'package:story/provider/auth_provider.dart';
 import 'package:story/provider/story_provider.dart';
-import 'package:story/routes/router_delegate.dart';
 
 class StoryListPage extends StatefulWidget {
-  const StoryListPage({super.key});
+  final Function() onLogout;
+  final void Function(Story) onStorySelected;
+  final Function() onAddStory;
+
+  const StoryListPage(
+      {super.key,
+      required this.onLogout,
+      required this.onStorySelected,
+      required this.onAddStory});
 
   @override
   _StoryListPageState createState() => _StoryListPageState();
 }
 
 class _StoryListPageState extends State<StoryListPage> {
-  late StoryAppRouterDelegate _routerDelegate;
-
   @override
   void initState() {
     super.initState();
@@ -41,7 +47,7 @@ class _StoryListPageState extends State<StoryListPage> {
               onPressed: () async {
                 await Provider.of<AuthProvider>(context, listen: false)
                     .logout();
-                _routerDelegate.navigateToLogin();
+                widget.onLogout();
               },
             ),
             TextButton(
@@ -85,9 +91,6 @@ class _StoryListPageState extends State<StoryListPage> {
 
   @override
   Widget build(BuildContext context) {
-    _routerDelegate =
-        Router.of(context).routerDelegate as StoryAppRouterDelegate;
-
     return ScrollConfiguration(
       behavior: const ScrollBehavior().copyWith(overscroll: false),
       child: Scaffold(
@@ -123,7 +126,7 @@ class _StoryListPageState extends State<StoryListPage> {
                     final story = stories[index];
                     return InkWell(
                       onTap: () {
-                        _routerDelegate.navigateToStoryDetail(story);
+                        widget.onStorySelected(story);
                       },
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
@@ -181,9 +184,7 @@ class _StoryListPageState extends State<StoryListPage> {
         ),
         floatingActionButton: FloatingActionButton(
           backgroundColor: Colors.blue,
-          onPressed: () {
-            _routerDelegate.navigateToAddStory();
-          },
+          onPressed: () => widget.onAddStory(),
           child: const Icon(Icons.add, color: Colors.white),
         ),
       ),

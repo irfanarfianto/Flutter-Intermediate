@@ -11,9 +11,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => StoryProvider()),
-        ChangeNotifierProvider(
-            create: (_) =>
-                StoryAppRouterDelegate()), 
+        ChangeNotifierProvider(create: (_) => MyRouterDelegate()),
       ],
       child: const MyApp(),
     ),
@@ -25,15 +23,16 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final StoryAppRouterDelegate routerDelegate =
-        Provider.of<StoryAppRouterDelegate>(context);
-    final StoryAppRouteInformationParser routeInformationParser =
-        StoryAppRouteInformationParser();
+    final MyRouterDelegate myRouterDelegate =
+        Provider.of<MyRouterDelegate>(context);
 
-    return MaterialApp.router(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      routerDelegate: routerDelegate,
-      routeInformationParser: routeInformationParser,
+      home: Router(
+        routerDelegate: myRouterDelegate,
+        routeInformationParser: MyRouteInformationParser(),
+        backButtonDispatcher: RootBackButtonDispatcher(),
+      ),
     );
   }
 }

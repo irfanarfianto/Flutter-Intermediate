@@ -5,10 +5,12 @@ import 'package:provider/provider.dart';
 import 'package:story/constants/button.dart';
 import 'package:story/constants/loading_indicator.dart';
 import 'package:story/provider/auth_provider.dart';
-import 'package:story/routes/router_delegate.dart';
 
 class RegisterPage extends StatefulWidget {
-  const RegisterPage({super.key});
+  final VoidCallback onLogin;
+  final VoidCallback onRegister;
+  const RegisterPage(
+      {super.key, required this.onLogin, required this.onRegister});
 
   @override
   _RegisterPageState createState() => _RegisterPageState();
@@ -22,15 +24,6 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _obscurePassword = true;
   bool _isLoading = false;
   String _errorMessage = '';
-
-  late StoryAppRouterDelegate _routerDelegate;
-
-  @override
-  void initState() {
-    super.initState();
-    _routerDelegate =
-        Provider.of<StoryAppRouterDelegate>(context, listen: false);
-  }
 
   @override
   void dispose() {
@@ -61,7 +54,7 @@ class _RegisterPageState extends State<RegisterPage> {
             content: Text('Registration successful. Please log in.'),
           ),
         );
-        _routerDelegate.navigateToLogin();
+        widget.onRegister();
       } else {
         setState(() {
           _errorMessage = 'Registration failed. Email already in use.';
@@ -159,9 +152,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 10),
                   TextButton(
-                    onPressed: () {
-                      _routerDelegate.navigateToLogin();
-                    },
+                    onPressed: () => widget.onLogin(),
                     child: const Text('Sudah memiliki akun? Masuk disini'),
                   ),
                 ],

@@ -1,17 +1,20 @@
-// ignore_for_file: library_private_types_in_public_api
+// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously
+
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:provider/provider.dart';
 import 'package:story/constants/button.dart';
 import 'package:story/constants/loading_indicator.dart';
 import 'package:story/constants/url_api.dart';
 import 'package:story/provider/auth_provider.dart';
-import 'package:story/routes/router_delegate.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  final VoidCallback onLogin;
+  final VoidCallback onRegister;
+
+  const LoginPage({super.key, required this.onLogin, required this.onRegister});
 
   @override
   _LoginPageState createState() => _LoginPageState();
@@ -24,58 +27,50 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscurePassword = true;
   bool _isLoading = false;
   String _errorMessage = '';
-  late StoryAppRouterDelegate _routerDelegate;
 
-  @override
-  void initState() {
-    super.initState();
-    _routerDelegate =
-        Provider.of<StoryAppRouterDelegate>(context, listen: false);
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _login() async {
+  Future<void> _login(BuildContext context) async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
         _errorMessage = '';
       });
 
-      final response = await http.post(
-        Uri.parse('${UrlApi.baseUrl}/login'),
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode(<String, String>{
-          'email': _emailController.text,
-          'password': _passwordController.text,
-        }),
-      );
+      try {
+        final response = await http.post(
+          Uri.parse('${UrlApi.baseUrl}/login'),
+          headers: <String, String>{
+            'Content-Type': 'application/json; charset=UTF-8',
+          },
+          body: jsonEncode(<String, String>{
+            'email': _emailController.text,
+            'password': _passwordController.text,
+          }),
+        );
 
-      setState(() {
-        _isLoading = false;
-      });
+        setState(() {
+          _isLoading = false;
+        });
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
           Provider.of<AuthProvider>(context, listen: false)
               .login(data['loginResult']['token']);
-          _routerDelegate.navigateToStoryList();
-        });
-      } else if (response.statusCode == 401) {
+
+          // Navigate to story list page
+          widget.onLogin();
+        } else if (response.statusCode == 401) {
+          setState(() {
+            _errorMessage = 'Invalid email or password. Please try again.';
+          });
+        } else {
+          setState(() {
+            _errorMessage = 'Login failed. Please try again later.';
+          });
+        }
+      } catch (e) {
         setState(() {
-          _errorMessage = 'Invalid email or password. Please try again.';
-        });
-      } else {
-        setState(() {
-          _errorMessage = 'Login failed. Please try again later.';
+          _isLoading = false;
+          _errorMessage = 'Failed to connect. Please try again later.';
         });
       }
     }
@@ -178,7 +173,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 20),
                   ElevatedButton(
-                    onPressed: _isLoading ? null : _login,
+                    onPressed: _isLoading ? null : () => _login(context),
                     style: primaryButtonStyle,
                     child: _isLoading
                         ? const LoadingIndicator()
@@ -186,9 +181,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 10),
                   TextButton(
-                    onPressed: () {
-                      _routerDelegate.navigateToRegister();
-                    },
+                    onPressed: widget.onRegister,
                     child: const Text('Register'),
                   ),
                 ],
