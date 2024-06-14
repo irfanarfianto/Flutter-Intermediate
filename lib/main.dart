@@ -6,6 +6,7 @@ import 'package:story/routes/router_delegate.dart';
 import 'package:story/routes/router_information_parser.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(
     MultiProvider(
       providers: [

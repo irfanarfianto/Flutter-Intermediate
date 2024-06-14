@@ -29,6 +29,7 @@ class MyRouterDelegate extends RouterDelegate<PageConfiguration>
   Future<void> _init() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     isLoggedIn = prefs.getString('token') != null;
+    selectedStoryId = prefs.getString('selectedStoryId');
     notifyListeners();
   }
 
@@ -120,10 +121,11 @@ class MyRouterDelegate extends RouterDelegate<PageConfiguration>
           return false;
         }
 
-        // Reset states upon pop
         if (isRegister) {
           isRegister = false;
         }
+        // saya rasa sudah menerapkannya sesuai dengan
+        // yang ada di learning path nya, tapi saat dicoba malah tidak berhasil terus
         selectedStoryId = null;
         isAddStory = false;
 
@@ -203,8 +205,7 @@ class MyRouterDelegate extends RouterDelegate<PageConfiguration>
               notifyListeners();
             },
             onStorySelected: (Story story) {
-              selectedStoryId =
-                  jsonEncode(story.toJson()); // Convert Story to JSON string
+              selectedStoryId = jsonEncode(story.toJson());
               notifyListeners();
             },
             onAddStory: () {
@@ -215,7 +216,6 @@ class MyRouterDelegate extends RouterDelegate<PageConfiguration>
         ),
       );
 
-      // Add the detail story page to the stack if selectedStoryId is valid
       if (selectedStoryId != null && _isValidJson(selectedStoryId!)) {
         stack.addAll(_storyDetailStack(selectedStoryId!));
       }
@@ -234,7 +234,7 @@ class MyRouterDelegate extends RouterDelegate<PageConfiguration>
           story: selectedStory,
           onBack: () {
             selectedStoryId = null;
-            notifyListeners(); // Update UI after popping detail page
+            notifyListeners();
           },
         ),
       ),
@@ -248,7 +248,11 @@ class MyRouterDelegate extends RouterDelegate<PageConfiguration>
         child: AddStoryPage(
           onStoryAdded: () {
             isAddStory = false;
-            notifyListeners(); // Update UI after adding story
+            notifyListeners();
+          },
+          onBack: () {
+            isAddStory = false;
+            notifyListeners();
           },
         ),
       ),

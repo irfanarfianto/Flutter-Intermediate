@@ -26,6 +26,12 @@ class _StoryDetailPageState extends State<StoryDetailPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Story Detail'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            widget.onBack();
+          },
+        ),
       ),
       body: SingleChildScrollView(
         child: Padding(

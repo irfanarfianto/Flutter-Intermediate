@@ -8,9 +8,10 @@ import 'package:story/constants/button.dart';
 import 'package:story/provider/story_provider.dart';
 
 class AddStoryPage extends StatefulWidget {
-  final Function onStoryAdded;
+  final Function() onStoryAdded;
+  final Function() onBack;
 
-  const AddStoryPage({super.key, required this.onStoryAdded});
+  const AddStoryPage({super.key, required this.onStoryAdded, required this.onBack});
 
   @override
   _AddStoryPageState createState() => _AddStoryPageState();
@@ -92,10 +93,15 @@ class _AddStoryPageState extends State<AddStoryPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        
         title: const Text('Add Story'),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            widget.onBack(); // Panggil fungsi kembali yang telah ditentukan
+          },
+        ),
       ),
       resizeToAvoidBottomInset: true,
       body: SingleChildScrollView(
