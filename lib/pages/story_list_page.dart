@@ -8,12 +8,14 @@ class StoryListPage extends StatefulWidget {
   final Function() onLogout;
   final void Function(Story) onStorySelected;
   final Function() onAddStory;
+  final Function() onClose;
 
   const StoryListPage({
     super.key,
     required this.onLogout,
     required this.onStorySelected,
     required this.onAddStory,
+    required this.onClose,
   });
 
   @override
@@ -74,7 +76,7 @@ class _StoryListPageState extends State<StoryListPage> {
             TextButton(
               child: const Text('Batal'),
               onPressed: () {
-                Navigator.of(context).pop();
+                widget.onClose();
               },
             ),
           ],

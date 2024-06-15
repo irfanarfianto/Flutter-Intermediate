@@ -50,7 +50,7 @@ class _MapPageState extends State<MapPage> {
             onMapCreated: _onMapCreated,
             initialCameraPosition: const CameraPosition(
               target: LatLng(-6.2088, 106.8456),
-              zoom: 10.0,
+              zoom: 18.0,
             ),
             onTap: _onMapTapped,
             markers: _markers,

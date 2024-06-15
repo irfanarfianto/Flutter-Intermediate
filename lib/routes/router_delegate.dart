@@ -217,22 +217,23 @@ class MyRouterDelegate extends RouterDelegate<PageConfiguration>
       stack.add(
         MaterialPage(
           key: const ValueKey('StoryListPage'),
-          child: StoryListPage(
-            onLogout: () async {
-              SharedPreferences prefs = await SharedPreferences.getInstance();
-              await prefs.remove('token');
-              isLoggedIn = false;
-              notifyListeners();
-            },
-            onStorySelected: (Story story) {
-              selectedStoryId = jsonEncode(story.toJson());
-              notifyListeners();
-            },
-            onAddStory: () {
-              isAddStory = true;
-              notifyListeners();
-            },
-          ),
+          child: StoryListPage(onLogout: () async {
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+            await prefs.remove('token');
+            isLoggedIn = false;
+            notifyListeners();
+          }, onStorySelected: (Story story) {
+            selectedStoryId = jsonEncode(story.toJson());
+            notifyListeners();
+          }, onAddStory: () {
+            isAddStory = true;
+            notifyListeners();
+          }, onClose: () {
+            isShowDialog = false;
+            selectedStoryId = null;
+            isAddStory = false;
+            notifyListeners();
+          }),
         ),
       );
 
@@ -297,20 +298,19 @@ class MyRouterDelegate extends RouterDelegate<PageConfiguration>
       MaterialPage(
         key: const ValueKey('MapPage'),
         child: MapPage(
-            onLocationSelected: _selectLocation,
-            onBack: () {
-              isMap = false;
-              notifyListeners();
-            }),
+          onLocationSelected: (lat, lon) {
+            selectedLat = lat;
+            selectedLon = lon;
+            isMap = false;
+            notifyListeners();
+          },
+          onBack: () {
+            isMap = false;
+            notifyListeners();
+          },
+        ),
       ),
     ];
-  }
-
-  void _selectLocation(double lat, double lon) {
-    selectedLat = lat;
-    selectedLon = lon;
-    isMap = false;
-    notifyListeners();
   }
 
   bool _isValidJson(String jsonString) {
