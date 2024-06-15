@@ -17,7 +17,6 @@ class _MapPageState extends State<MapPage> {
   final Set<Marker> _markers = {};
   double? _lat;
   double? _lon;
-  bool _isLocationSelected = false;
 
   void _onMapCreated(GoogleMapController controller) {}
 
@@ -32,7 +31,6 @@ class _MapPageState extends State<MapPage> {
       );
       _lat = latLng.latitude;
       _lon = latLng.longitude;
-      _isLocationSelected = true;
     });
   }
 
@@ -58,27 +56,29 @@ class _MapPageState extends State<MapPage> {
           Positioned(
             left: 0,
             right: 0,
-            bottom: 16,
-            child: Visibility(
-              visible: _isLocationSelected,
-              child: Container(
-                alignment: Alignment.center,
-                child: ElevatedButton(
-                  style: primaryButtonStyle,
-                  onPressed: () {
-                    if (_lat != null && _lon != null) {
-                      widget.onLocationSelected(_lat!, _lon!);
-                      widget.onBack();
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Please select a location on the map.'),
-                        ),
-                      );
-                    }
-                  },
-                  child: const Text('Confirm Location'),
-                ),
+            bottom: 25,
+            child: Container(
+              alignment: Alignment.center,
+              child: ElevatedButton(
+                style: primaryButtonStyle,
+                onPressed: () {
+                  if (_lat != null && _lon != null) {
+                    widget.onLocationSelected(_lat!, _lon!);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Location selected: $_lat, $_lon'),
+                      ),
+                    );
+                    widget.onBack();
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please select a location on the map.'),
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Confirm Location'),
               ),
             ),
           ),

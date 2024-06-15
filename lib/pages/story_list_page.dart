@@ -57,32 +57,16 @@ class _StoryListPageState extends State<StoryListPage> {
     await Provider.of<StoryProvider>(context, listen: false).fetchStories();
   }
 
-  Future<void> _showLogoutDialog(BuildContext context) async {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Keluar dari aplikasi?'),
-          actions: [
-            TextButton(
-              child: const Text('Keluar'),
-              onPressed: () async {
-                await Provider.of<AuthProvider>(context, listen: false)
-                    .logout();
-                widget.onLogout();
-              },
-            ),
-            TextButton(
-              child: const Text('Batal'),
-              onPressed: () {
-                widget.onClose();
-              },
-            ),
-          ],
-        );
-      },
-    );
+  void _showLogoutDialog(BuildContext context) {
+    setState(() {
+      isShowDialog = true;
+    });
+  }
+
+  void _closeLogoutDialog() {
+    setState(() {
+      isShowDialog = false;
+    });
   }
 
   Widget _buildStoryPlaceholder() {
@@ -114,113 +98,135 @@ class _StoryListPageState extends State<StoryListPage> {
 
   @override
   Widget build(BuildContext context) {
-    return ScrollConfiguration(
-      behavior: const ScrollBehavior().copyWith(overscroll: false),
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Story App'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.logout, semanticLabel: 'Logout'),
-              tooltip: 'Logout',
-              onPressed: () => _showLogoutDialog(context),
-            ),
-          ],
-          backgroundColor: Colors.blue,
-          foregroundColor: Colors.white,
-          automaticallyImplyLeading: false,
-        ),
-        body: Consumer<StoryProvider>(
-          builder: (context, storyProvider, child) {
-            if (storyProvider.isLoading && storyProvider.stories.isEmpty) {
-              return ListView.builder(
-                itemCount: 5,
-                itemBuilder: (context, index) => _buildStoryPlaceholder(),
-              );
-            } else if (storyProvider.stories.isEmpty) {
-              return const Center(child: Text('No stories available.'));
-            } else {
-              final stories = storyProvider.stories;
-              return RefreshIndicator(
-                onRefresh: () => _refreshStories(context),
-                child: ListView.builder(
-                  controller: _scrollController,
-                  itemCount: storyProvider.stories.length +
-                      (storyProvider.hasMore ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index == stories.length) {
-                      return const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 16.0),
-                        child: Center(
-                          child: CircularProgressIndicator(),
-                        ),
-                      );
-                    }
-                    final story = stories[index];
-                    return InkWell(
-                      onTap: () {
-                        widget.onStorySelected(story);
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              width: double.infinity,
-                              height: 200.0,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(10.0),
-                                child: Image.network(
-                                  story.photoUrl,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(Icons.error);
-                                  },
-                                  loadingBuilder:
-                                      (context, child, loadingProgress) {
-                                    if (loadingProgress == null) {
-                                      return child;
-                                    } else {
-                                      return const Center(
-                                        child: CircularProgressIndicator(),
-                                      );
-                                    }
-                                  },
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            title: const Text('Story App'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.logout, semanticLabel: 'Logout'),
+                tooltip: 'Logout',
+                onPressed: () => _showLogoutDialog(context),
+              ),
+            ],
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            automaticallyImplyLeading: false,
+          ),
+          body: Consumer<StoryProvider>(
+            builder: (context, storyProvider, child) {
+              if (storyProvider.isLoading && storyProvider.stories.isEmpty) {
+                return ListView.builder(
+                  itemCount: 5,
+                  itemBuilder: (context, index) => _buildStoryPlaceholder(),
+                );
+              } else if (storyProvider.stories.isEmpty) {
+                return const Center(child: Text('No stories available.'));
+              } else {
+                final stories = storyProvider.stories;
+                return RefreshIndicator(
+                  onRefresh: () => _refreshStories(context),
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    itemCount: storyProvider.stories.length +
+                        (storyProvider.hasMore ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == stories.length) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16.0),
+                          child: Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      }
+                      final story = stories[index];
+                      return InkWell(
+                        onTap: () {
+                          widget.onStorySelected(story);
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(
+                                width: double.infinity,
+                                height: 200.0,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10.0),
+                                  child: Image.network(
+                                    story.photoUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Icon(Icons.error);
+                                    },
+                                    loadingBuilder:
+                                        (context, child, loadingProgress) {
+                                      if (loadingProgress == null) {
+                                        return child;
+                                      } else {
+                                        return const Center(
+                                          child: CircularProgressIndicator(),
+                                        );
+                                      }
+                                    },
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              story.name,
-                              style: const TextStyle(
-                                fontSize: 16.0,
-                                fontWeight: FontWeight.bold,
+                              const SizedBox(height: 10),
+                              Text(
+                                story.name,
+                                style: const TextStyle(
+                                  fontSize: 16.0,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                              story.description,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 14.0),
-                            ),
-                          ],
+                              const SizedBox(height: 5),
+                              Text(
+                                story.description,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 14.0),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              );
-            }
-          },
+                      );
+                    },
+                  ),
+                );
+              }
+            },
+          ),
+          floatingActionButton: FloatingActionButton(
+            backgroundColor: Colors.blue,
+            onPressed: () => widget.onAddStory(),
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
         ),
-        floatingActionButton: FloatingActionButton(
-          backgroundColor: Colors.blue,
-          onPressed: () => widget.onAddStory(),
-          child: const Icon(Icons.add, color: Colors.white),
-        ),
-      ),
+        if (isShowDialog)
+          AlertDialog(
+            title: const Text('Keluar dari aplikasi?'),
+            actions: [
+              TextButton(
+                child: const Text('Keluar'),
+                onPressed: () async {
+                  await Provider.of<AuthProvider>(context, listen: false)
+                      .logout();
+                  widget.onLogout();
+                  _closeLogoutDialog();
+                },
+              ),
+              TextButton(
+                child: const Text('Batal'),
+                onPressed: () {
+                  _closeLogoutDialog();
+                },
+              ),
+            ],
+          ),
+      ],
     );
   }
 }
