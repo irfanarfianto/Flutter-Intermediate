@@ -11,11 +11,16 @@ import 'package:flutter/foundation.dart';
 class StoryProvider with ChangeNotifier {
   List<Story> _stories = [];
   bool _isLoading = false;
+  bool _hasMore = true;
+  int currentPage = 1;
 
   List<Story> get stories => _stories;
   bool get isLoading => _isLoading;
+  bool get hasMore => _hasMore;
 
-  Future<void> fetchStories() async {
+  Future<void> fetchStories({int page = 1}) async {
+    if (_isLoading) return;
+
     _isLoading = true;
     notifyListeners();
 
@@ -26,7 +31,7 @@ class StoryProvider with ChangeNotifier {
       }
 
       final response = await http.get(
-        Uri.parse('${UrlApi.baseUrl}/stories'),
+        Uri.parse('${UrlApi.baseUrl}/stories?page=$page'),
         headers: <String, String>{
           'Authorization': 'Bearer $token',
         },
@@ -34,8 +39,20 @@ class StoryProvider with ChangeNotifier {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        _stories =
-            List<Story>.from(data['listStory'].map((x) => Story.fromJson(x)));
+        List<Story> fetchedStories = List<Story>.from(
+          data['listStory'].map((x) => Story.fromJson(x)),
+        );
+
+        if (fetchedStories.isNotEmpty) {
+          if (page == 1) {
+            _stories = fetchedStories;
+          } else {
+            _stories.addAll(fetchedStories);
+          }
+          currentPage = page;
+        } else {
+          _hasMore = false;
+        }
       } else {
         throw Exception('Failed to load stories');
       }
@@ -47,7 +64,8 @@ class StoryProvider with ChangeNotifier {
     }
   }
 
-  Future<int> addStory(String description, File image) async {
+  Future<int> addStory(
+      String description, File image, double? lat, double? lon) async {
     _isLoading = true;
     notifyListeners();
 
@@ -63,6 +81,12 @@ class StoryProvider with ChangeNotifier {
       );
       request.fields['description'] = description;
       request.files.add(await http.MultipartFile.fromPath('photo', image.path));
+
+      if (lat != null && lon != null) {
+        request.fields['lat'] = lat.toString();
+        request.fields['lon'] = lon.toString();
+      }
+
       request.headers['Authorization'] = 'Bearer $token';
 
       final response = await request.send();

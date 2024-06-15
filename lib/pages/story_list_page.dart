@@ -1,5 +1,3 @@
-// ignore_for_file: library_private_types_in_public_api
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:story/model/story.dart';
@@ -22,12 +20,33 @@ class StoryListPage extends StatefulWidget {
 }
 
 class _StoryListPageState extends State<StoryListPage> {
+  final ScrollController _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<StoryProvider>(context, listen: false).fetchStories();
+
+    // Menunda fetchStories sampai build selesai
+    Future.microtask(() {
+      final storyProvider = Provider.of<StoryProvider>(context, listen: false);
+      storyProvider.fetchStories();
     });
+
+    _scrollController.addListener(() {
+      final storyProvider = Provider.of<StoryProvider>(context, listen: false);
+      if (_scrollController.position.pixels ==
+          _scrollController.position.maxScrollExtent) {
+        if (storyProvider.hasMore) {
+          storyProvider.fetchStories(page: storyProvider.currentPage + 1);
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _refreshStories(BuildContext context) async {
@@ -109,7 +128,7 @@ class _StoryListPageState extends State<StoryListPage> {
         ),
         body: Consumer<StoryProvider>(
           builder: (context, storyProvider, child) {
-            if (storyProvider.isLoading) {
+            if (storyProvider.isLoading && storyProvider.stories.isEmpty) {
               return ListView.builder(
                 itemCount: 5,
                 itemBuilder: (context, index) => _buildStoryPlaceholder(),
@@ -121,8 +140,18 @@ class _StoryListPageState extends State<StoryListPage> {
               return RefreshIndicator(
                 onRefresh: () => _refreshStories(context),
                 child: ListView.builder(
-                  itemCount: stories.length,
+                  controller: _scrollController,
+                  itemCount: storyProvider.stories.length +
+                      (storyProvider.hasMore ? 1 : 0),
                   itemBuilder: (context, index) {
+                    if (index == stories.length) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16.0),
+                        child: Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      );
+                    }
                     final story = stories[index];
                     return InkWell(
                       onTap: () {

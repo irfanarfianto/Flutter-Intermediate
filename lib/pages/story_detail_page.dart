@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:story/model/story.dart';
 
 class StoryDetailPage extends StatefulWidget {
   final Story story;
-
   final VoidCallback onBack;
 
   const StoryDetailPage({
@@ -18,6 +18,21 @@ class StoryDetailPage extends StatefulWidget {
 }
 
 class _StoryDetailPageState extends State<StoryDetailPage> {
+  final Set<Marker> _markers = {};
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.story.lat != null && widget.story.lon != null) {
+      _markers.add(
+        Marker(
+          markerId: const MarkerId('story_location'),
+          position: LatLng(widget.story.lat!, widget.story.lon!),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     String formattedCreationTime =
@@ -85,6 +100,20 @@ class _StoryDetailPageState extends State<StoryDetailPage> {
                 Text(
                   'Location: (${widget.story.lat}, ${widget.story.lon})',
                   style: const TextStyle(fontSize: 14.0, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 200,
+                  child: GoogleMap(
+                    onMapCreated: (controller) {
+                      setState(() {});
+                    },
+                    initialCameraPosition: CameraPosition(
+                      target: LatLng(widget.story.lat!, widget.story.lon!),
+                      zoom: 15,
+                    ),
+                    markers: _markers,
+                  ),
                 ),
               ],
             ],

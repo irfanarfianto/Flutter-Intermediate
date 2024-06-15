@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:story/model/story.dart';
 import 'package:story/pages/add_story_page.dart';
 import 'package:story/pages/login_page.dart';
+import 'package:story/pages/map_page.dart';
 import 'package:story/pages/register_page.dart';
 import 'package:story/pages/splash_screen.dart';
 import 'package:story/pages/story_detail_page.dart';
@@ -21,6 +22,9 @@ class MyRouterDelegate extends RouterDelegate<PageConfiguration>
   bool isRegister = false;
   String? selectedStoryId;
   bool isAddStory = false;
+  bool isMap = false;
+  double? selectedLat;
+  double? selectedLon;
 
   MyRouterDelegate() : _navigatorKey = GlobalKey<NavigatorState>() {
     _init();
@@ -52,6 +56,8 @@ class MyRouterDelegate extends RouterDelegate<PageConfiguration>
       return PageConfiguration.detailStory(selectedStoryId!);
     } else if (isAddStory) {
       return PageConfiguration.addStory();
+    } else if (isMap) {
+      return PageConfiguration.map();
     } else {
       return null;
     }
@@ -89,6 +95,12 @@ class MyRouterDelegate extends RouterDelegate<PageConfiguration>
       isRegister = false;
       selectedStoryId = null;
       isAddStory = true;
+    } else if (configuration.isMapPage) {
+      isUnknown = false;
+      isRegister = false;
+      selectedStoryId = null;
+      isAddStory = false;
+      isMap = true;
     }
 
     notifyListeners();
@@ -110,6 +122,8 @@ class MyRouterDelegate extends RouterDelegate<PageConfiguration>
       historyStack = _storyDetailStack(selectedStoryId!);
     } else if (isAddStory) {
       historyStack = _addStoryStack();
+    } else if (isMap) {
+      historyStack = _mapStack();
     }
 
     return Navigator(
@@ -128,6 +142,7 @@ class MyRouterDelegate extends RouterDelegate<PageConfiguration>
         // yang ada di learning path nya, tapi saat dicoba malah tidak berhasil terus
         selectedStoryId = null;
         isAddStory = false;
+        isMap = false;
 
         notifyListeners();
 
@@ -254,9 +269,35 @@ class MyRouterDelegate extends RouterDelegate<PageConfiguration>
             isAddStory = false;
             notifyListeners();
           },
+          isMap: ({required Function(double, double) onLocationSelected}) {
+            isMap = true;
+            notifyListeners();
+            // Panggil navigator untuk navigasi ke MapPage
+            navigatorKey.currentState?.push(MaterialPageRoute(
+              builder: (context) => MapPage(
+                onLocationSelected: onLocationSelected,
+              ),
+            ));
+          },
         ),
       ),
     ];
+  }
+
+  List<Page> _mapStack() {
+    return [
+      MaterialPage(
+        key: const ValueKey('MapPage'),
+        child: MapPage(onLocationSelected: _selectLocation),
+      ),
+    ];
+  }
+
+  void _selectLocation(double lat, double lon) {
+    selectedLat = lat;
+    selectedLon = lon;
+    isMap = false;
+    notifyListeners();
   }
 
   bool _isValidJson(String jsonString) {
