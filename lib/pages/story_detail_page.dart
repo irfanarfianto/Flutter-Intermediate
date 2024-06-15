@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:intl/intl.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:story/model/story.dart';
@@ -19,6 +20,7 @@ class StoryDetailPage extends StatefulWidget {
 
 class _StoryDetailPageState extends State<StoryDetailPage> {
   final Set<Marker> _markers = {};
+  String? _address;
 
   @override
   void initState() {
@@ -28,8 +30,28 @@ class _StoryDetailPageState extends State<StoryDetailPage> {
         Marker(
           markerId: const MarkerId('story_location'),
           position: LatLng(widget.story.lat!, widget.story.lon!),
+          onTap: _getAddressFromLatLng,
         ),
       );
+    }
+  }
+
+  Future<void> _getAddressFromLatLng() async {
+    if (widget.story.lat != null && widget.story.lon != null) {
+      try {
+        List<Placemark> placemarks = await placemarkFromCoordinates(
+          widget.story.lat!,
+          widget.story.lon!,
+        );
+
+        if (placemarks.isNotEmpty) {
+          Placemark place = placemarks[0];
+          setState(() {
+            _address =
+                '${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.country}';
+          });
+        }
+      } catch (e) {}
     }
   }
 
@@ -101,6 +123,12 @@ class _StoryDetailPageState extends State<StoryDetailPage> {
                   'Location: (${widget.story.lat}, ${widget.story.lon})',
                   style: const TextStyle(fontSize: 14.0, color: Colors.grey),
                 ),
+                const SizedBox(height: 8),
+                if (_address != null)
+                  Text(
+                    'Address: $_address',
+                    style: const TextStyle(fontSize: 14.0, color: Colors.grey),
+                  ),
                 const SizedBox(height: 8),
                 SizedBox(
                   height: 200,

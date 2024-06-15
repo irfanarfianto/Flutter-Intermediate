@@ -9,11 +9,12 @@ class StoryListPage extends StatefulWidget {
   final void Function(Story) onStorySelected;
   final Function() onAddStory;
 
-  const StoryListPage(
-      {super.key,
-      required this.onLogout,
-      required this.onStorySelected,
-      required this.onAddStory});
+  const StoryListPage({
+    super.key,
+    required this.onLogout,
+    required this.onStorySelected,
+    required this.onAddStory,
+  });
 
   @override
   _StoryListPageState createState() => _StoryListPageState();
@@ -21,6 +22,7 @@ class StoryListPage extends StatefulWidget {
 
 class _StoryListPageState extends State<StoryListPage> {
   final ScrollController _scrollController = ScrollController();
+  bool isShowDialog = false;
 
   @override
   void initState() {

@@ -4,8 +4,10 @@ import 'package:story/constants/button.dart';
 
 class MapPage extends StatefulWidget {
   final Function(double, double) onLocationSelected;
+  final Function() onBack;
 
-  const MapPage({super.key, required this.onLocationSelected});
+  const MapPage(
+      {super.key, required this.onLocationSelected, required this.onBack});
 
   @override
   _MapPageState createState() => _MapPageState();
@@ -66,7 +68,7 @@ class _MapPageState extends State<MapPage> {
                   onPressed: () {
                     if (_lat != null && _lon != null) {
                       widget.onLocationSelected(_lat!, _lon!);
-                      Navigator.pop(context);
+                      widget.onBack();
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(

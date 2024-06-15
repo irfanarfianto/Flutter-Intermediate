@@ -25,6 +25,7 @@ class MyRouterDelegate extends RouterDelegate<PageConfiguration>
   bool isMap = false;
   double? selectedLat;
   double? selectedLon;
+  bool isShowDialog = false;
 
   MyRouterDelegate() : _navigatorKey = GlobalKey<NavigatorState>() {
     _init();
@@ -137,6 +138,10 @@ class MyRouterDelegate extends RouterDelegate<PageConfiguration>
 
         if (isRegister) {
           isRegister = false;
+        }
+        if (isShowDialog) {
+          isShowDialog = false;
+          notifyListeners();
         }
         // saya rasa sudah menerapkannya sesuai dengan
         // yang ada di learning path nya, tapi saat dicoba malah tidak berhasil terus
@@ -269,13 +274,16 @@ class MyRouterDelegate extends RouterDelegate<PageConfiguration>
             isAddStory = false;
             notifyListeners();
           },
-          isMap: ({required Function(double, double) onLocationSelected}) {
+          onMap: ({required Function(double, double) onLocationSelected}) {
             isMap = true;
             notifyListeners();
-            // Panggil navigator untuk navigasi ke MapPage
             navigatorKey.currentState?.push(MaterialPageRoute(
               builder: (context) => MapPage(
                 onLocationSelected: onLocationSelected,
+                onBack: () {
+                  isMap = false;
+                  notifyListeners();
+                },
               ),
             ));
           },
@@ -288,7 +296,12 @@ class MyRouterDelegate extends RouterDelegate<PageConfiguration>
     return [
       MaterialPage(
         key: const ValueKey('MapPage'),
-        child: MapPage(onLocationSelected: _selectLocation),
+        child: MapPage(
+            onLocationSelected: _selectLocation,
+            onBack: () {
+              isMap = false;
+              notifyListeners();
+            }),
       ),
     ];
   }

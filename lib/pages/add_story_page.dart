@@ -10,13 +10,13 @@ import 'package:story/provider/story_provider.dart';
 class AddStoryPage extends StatefulWidget {
   final Function() onStoryAdded;
   final Function() onBack;
-  final Function({required Function(double, double) onLocationSelected}) isMap;
+  final Function({required Function(double, double) onLocationSelected}) onMap;
 
   const AddStoryPage({
     super.key,
     required this.onStoryAdded,
     required this.onBack,
-    required this.isMap,
+    required this.onMap,
   });
 
   @override
@@ -172,7 +172,7 @@ class _AddStoryPageState extends State<AddStoryPage> {
                 const SizedBox(height: 10),
                 ElevatedButton(
                   onPressed: () {
-                    widget.isMap(
+                    widget.onMap(
                       onLocationSelected: _selectLocation,
                     );
                   },
